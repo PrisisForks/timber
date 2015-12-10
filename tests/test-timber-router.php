@@ -1,6 +1,6 @@
 s<?php
 
-class TimberTestRouter extends WP_UnitTestCase {
+class TestTimberRouter extends Timber_UnitTestCase {
 
 	function testThemeRoute(){
 		$template = Timber::load_template('single.php');

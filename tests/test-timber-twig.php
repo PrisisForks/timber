@@ -1,6 +1,6 @@
 <?php
 
-	class TimberTestTwig extends WP_UnitTestCase {
+	class TestTimberTwig extends Timber_UnitTestCase {
 
 		function tearDown() {
 			$lang_dir = get_stylesheet_directory().'/languages';
@@ -10,7 +10,6 @@
 			if (file_exists($lang_dir.'/en_US.mo' )) {
 				unlink($lang_dir.'/en_US.mo');
 			}
-
 		}
 
 		function _setupTranslationFiles() {
@@ -148,19 +147,6 @@
 			}
 		}
 
-		function testTimberPostInTwig(){
-			$pid = $this->factory->post->create(array('post_title' => 'Foo'));
-			$str = '{{TimberPost('.$pid.').title}}';
-			$this->assertEquals('Foo', Timber::compile_string($str));
-		}
-
-		function testTimberPostsInTwig(){
-			$pids[] = $this->factory->post->create(array('post_title' => 'Foo'));
-			$pids[] = $this->factory->post->create(array('post_title' => 'Bar'));
-			$str = '{% for post in TimberPost(pids) %}{{post.title}}{% endfor %}';
-			$this->assertEquals('FooBar', Timber::compile_string($str, array('pids' => $pids)));
-		}
-
 		function testToArrayWithString() {
 			$thing = 'thing';
 			$str = '{% for thing in things|array %}{{thing}}{% endfor %}';
@@ -171,19 +157,6 @@
 			$thing = array('thing', 'thang');
 			$str = '{% for thing in things|array %}{{thing}}{% endfor %}';
 			$this->assertEquals('thingthang', Timber::compile_string($str, array('things' => $thing)));
-		}
-
-		function testTimberUserInTwig(){
-			$uid = $this->factory->user->create(array('display_name' => 'Pete Karl'));
-			$str = '{{TimberUser('.$uid.').name}}';
-			$this->assertEquals('Pete Karl', Timber::compile_string($str));
-		}
-
-		function testTimberUsersInTwig() {
-			$uids[] = $this->factory->user->create(array('display_name' => 'Estelle Getty'));
-			$uids[] = $this->factory->user->create(array('display_name' => 'Bea Arthur'));
-			$str = '{% for user in TimberUser(uids) %}{{user.name}} {% endfor %}';
-			$this->assertEquals('Estelle Getty Bea Arthur', trim(Timber::compile_string($str, array('uids' => $uids))));
 		}
 
 		function testTwigString() {
@@ -219,6 +192,46 @@
 			$post = new TimberPost( $pid );
 			$result = Timber::compile('assets/set-object.twig', array('post' => $post));
 			$this->assertEquals('Spaceballs: may the schwartz be with you', trim($result));
+		}
+
+		function testAddToTwig() {
+			add_filter('get_twig', function( $twig ) {
+				$twig->addFilter( new Twig_SimpleFilter( 'foobar', function( $text ) {
+					return $text . 'foobar';
+				}) );
+				return $twig;
+			});
+			$str = Timber::compile_string('{{ "jared" | foobar }}');
+			$this->assertEquals( 'jaredfoobar' , $str );
+		}
+
+		function testTimberTwigObjectFilter() {
+			add_filter('timber/twig', function( $twig ) {
+				$twig->addFilter( new Twig_SimpleFilter( 'quack', function( $text ) {
+					return $text . ' Quack!';
+				}) );
+				return $twig;
+			});
+			$str = Timber::compile_string('{{ "jared" | quack }}');
+			$this->assertEquals( 'jared Quack!' , $str );
+		}
+
+		function testTwigShortcode() {
+			add_shortcode('my_shortcode', function( $atts, $content ) {
+				return 'Jaredfoo';
+			});
+			$str = Timber::compile_string('{{shortcode("[my_shortcode]")}}');
+			$this->assertEquals('Jaredfoo', $str);
+		}
+
+		function testTwigShortcodeWithContent() {
+			add_shortcode('duck', function( $atts, $content ) {
+				return $content . ' says quack!';
+			});
+
+			$str = Timber::compile_string('{{shortcode("[duck]Lauren[/duck]")}}');
+			$this->assertEquals('Lauren says quack!', $str);
+
 		}
 
 

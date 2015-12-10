@@ -1,11 +1,18 @@
 <?php
 
-	class TestTimberUser extends WP_UnitTestCase {
+	class TestTimberUser extends Timber_UnitTestCase {
 
 		function testInitWithID(){
 			$uid = $this->factory->user->create(array('display_name' => 'Baberaham Lincoln'));
 			$user = new TimberUser($uid);
 			$this->assertEquals('Baberaham Lincoln', $user->name);
+			$this->assertEquals($uid, $user->id);
+		}
+
+		function testInitWithSlug(){
+			$uid = $this->factory->user->create(array('display_name' => 'Tito Bottitta', 'user_login' => 'mbottitta'));
+			$user = new TimberUser('mbottitta');
+			$this->assertEquals('Tito Bottitta', $user->name);
 			$this->assertEquals($uid, $user->id);
 		}
 

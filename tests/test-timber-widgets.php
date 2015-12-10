@@ -1,6 +1,6 @@
 <?php
 
-class TimberTestWidgets extends WP_UnitTestCase {
+class TestTimberWidgets extends Timber_UnitTestCase {
 
 	function testHTML() {
 		// replace this with some actual testing code

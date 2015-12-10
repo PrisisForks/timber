@@ -1,20 +1,12 @@
 <?php
 
-	class TimberPostTest extends WP_UnitTestCase {
+	class TestTimberPost extends Timber_UnitTestCase {
 
-		function testPost(){
+		function testPostObject(){
 			$post_id = $this->factory->post->create();
 			$post = new TimberPost($post_id);
 			$this->assertEquals('TimberPost', get_class($post));
 			$this->assertEquals($post_id, $post->ID);
-		}
-
-		function testComments() {
-			$post_id = $this->factory->post->create(array('post_title' => 'Gobbles'));
-			$comment_id_array = $this->factory->comment->create_many( 5, array('comment_post_ID' => $post_id) );
-			$post = new TimberPost($post_id);
-			$this->assertEquals( 5, count($post->comments()) );
-			$this->assertEquals( 5, $post->get_comment_count() );
 		}
 
 		function testNameMethod() {
@@ -25,7 +17,7 @@
 
 		function testGetImage() {
 			$post_id = $this->factory->post->create(array('post_title' => 'St. Louis History'));
-			$filename = TimberImageTest::copyTestImage( 'arch.jpg' );
+			$filename = TestTimberImage::copyTestImage( 'arch.jpg' );
 			$attachment = array( 'post_title' => 'The Arch', 'post_content' => '' );
 			$iid = wp_insert_attachment( $attachment, $filename, $post_id );
 			update_post_meta($post_id, 'landmark', $iid);
@@ -43,7 +35,7 @@
 
 		function testFalseParent() {
 			$pid = $this->factory->post->create();
-			$filename = TimberImageTest::copyTestImage( 'arch.jpg' );
+			$filename = TestTimberImage::copyTestImage( 'arch.jpg' );
 			$attachment = array( 'post_title' => 'The Arch', 'post_content' => '' );
 			$iid = wp_insert_attachment( $attachment, $filename, $pid );
 			update_post_meta( $iid, 'architect', 'Eero Saarinen' );
@@ -236,14 +228,6 @@
 			$this->assertEquals($rand, $post->test_meta);
 		}
 
-		function testDoubleEllipsis(){
-			$post_id = $this->factory->post->create();
-			$post = new TimberPost($post_id);
-			$post->post_excerpt = 'this is super dooper trooper long words';
-			$prev = $post->get_preview(3, true);
-			$this->assertEquals(1, substr_count($prev, '&hellip;'));
-		}
-
 		function testCanEdit(){
 			wp_set_current_user(1);
 			$post_id = $this->factory->post->create(array('post_author' => 1));
@@ -252,34 +236,7 @@
 			wp_set_current_user(0);
 		}
 
-		function testGetPreview() {
-			global $wp_rewrite;
-			$struc = false;
-			$wp_rewrite->permalink_structure = $struc;
-			update_option('permalink_structure', $struc);
-			$post_id = $this->factory->post->create(array('post_content' => 'this is super dooper trooper long words'));
-			$post = new TimberPost($post_id);
 
-			// no excerpt
-			$post->post_excerpt = '';
-			$preview = $post->get_preview(3);
-			$this->assertRegExp('/this is super &hellip;  <a href="http:\/\/example.org\/\?p=\d+" class="read-more">Read More<\/a>/', $preview);
-
-			// excerpt set, force is false, no read more
-			$post->post_excerpt = 'this is excerpt longer than three words';
-			$preview = $post->get_preview(3, false, '');
-			$this->assertEquals($preview, $post->post_excerpt);
-
-			// custom read more set
-			$post->post_excerpt = '';
-			$preview = $post->get_preview(3, false, 'Custom more');
-			$this->assertRegExp('/this is super &hellip;  <a href="http:\/\/example.org\/\?p=\d+" class="read-more">Custom more<\/a>/', $preview);
-
-			// content with <!--more--> tag, force false
-			$post->post_content = 'this is super dooper<!--more--> trooper long words';
-			$preview = $post->get_preview(2, false, '');
-			$this->assertEquals('this is super dooper', $preview);
-		}
 
 		function testTitle(){
 			$title = 'Fifteen Million Merits';
@@ -330,7 +287,7 @@
             setup_postdata( get_post( $post_id ) );
 
             $post = Timber::get_post();
-			$this->assertEquals($page1, trim(strip_tags($post->get_paged_content())));
+			$this->assertEquals($page1, trim(strip_tags( $post->paged_content() )));
 
             $pagination = $post->pagination();
             $this->go_to( $pagination['pages'][1]['link'] );
@@ -338,7 +295,7 @@
             setup_postdata( get_post( $post_id ) );
             $post = Timber::get_post();
 
-			$this->assertEquals($page2, trim(strip_tags($post->get_paged_content())));
+			$this->assertEquals($page2, trim(strip_tags( $post->get_paged_content() )));
 		}
 
 		function testMetaCustomArrayFilter(){
@@ -385,10 +342,10 @@
 		}
 
 		function testPostAuthor(){
-			$author_id = $this->factory->user->create(array('display_name' => 'Jared Novack'));
+			$author_id = $this->factory->user->create(array('display_name' => 'Jared Novack', 'user_login' => 'jared-novack'));
 			$pid = $this->factory->post->create(array('post_author' => $author_id));
 			$post = new TimberPost($pid);
-			$this->assertEquals('user-1', $post->author()->slug());
+			$this->assertEquals('jared-novack', $post->author()->slug());
 			$this->assertEquals('Jared Novack', $post->author()->name());
 			$template = 'By {{post.author}}';
 			$authorCompile = Timber::compile_string($template, array('post' => $post));
@@ -399,33 +356,47 @@
 		}
 
 		function testPostAuthorInTwig(){
-			$author_id = $this->factory->user->create(array('display_name' => 'User 1'));
+			$author_id = $this->factory->user->create(array('display_name' => 'Jon Stewart', 'user_login' => 'jon-stewart'));
 			$pid = $this->factory->post->create(array('post_author' => $author_id));
 			$post = new TimberPost($pid);
-			$this->assertEquals('user-1', $post->author()->slug());
-			$this->assertEquals('User 1', $post->author()->name());
+			$this->assertEquals('jon-stewart', $post->author()->slug());
+			$this->assertEquals('Jon Stewart', $post->author()->name());
 			$template = 'By {{post.author}}';
 			$authorCompile = Timber::compile_string($template, array('post' => $post));
 			$template = 'By {{post.author.name}}';
 			$authorNameCompile = Timber::compile_string($template, array('post' => $post));
 			$this->assertEquals($authorCompile, $authorNameCompile);
-			$this->assertEquals('By User 1', $authorCompile);
+			$this->assertEquals('By Jon Stewart', $authorCompile);
 		}
 
 		function testPostModifiedAuthor() {
-			$author_id = $this->factory->user->create(array('display_name' => 'Woodward'));
-			$mod_author_id = $this->factory->user->create(array('display_name' => 'Bernstein'));
+			$author_id = $this->factory->user->create(array('display_name' => 'Woodward', 'user_login' => 'bob-woodward'));
+			$mod_author_id = $this->factory->user->create(array('display_name' => 'Bernstein', 'user_login' => 'carl-bernstein'));
 			$pid = $this->factory->post->create(array('post_author' => $author_id));
 			$post = new TimberPost($pid);
-			$this->assertEquals('user-1', $post->author()->slug());
-			$this->assertEquals('user-1', $post->modified_author()->slug());
+			$this->assertEquals('bob-woodward', $post->author()->slug());
+			$this->assertEquals('bob-woodward', $post->modified_author()->slug());
 			$this->assertEquals('Woodward', $post->author()->name());
 			$this->assertEquals('Woodward', $post->modified_author()->name());
 			update_post_meta($pid, '_edit_last', $mod_author_id);
-			$this->assertEquals('user-1', $post->author()->slug());
-			$this->assertEquals('user-2', $post->modified_author()->slug());
+			$this->assertEquals('bob-woodward', $post->author()->slug());
+			$this->assertEquals('carl-bernstein', $post->modified_author()->slug());
 			$this->assertEquals('Woodward', $post->author()->name());
 			$this->assertEquals('Bernstein', $post->modified_author()->name());
+		}
+
+		function tearDown() {
+			global $wpdb;
+			$query = "DELETE from $wpdb->users WHERE ID > 1";
+			$wpdb->query($query);
+		}
+
+		function testPostFormat() {
+			add_theme_support( 'post-formats', array( 'aside', 'gallery' ) );
+			$pid = $this->factory->post->create();
+			set_post_format($pid, 'aside');
+			$post = new TimberPost($pid);
+			$this->assertEquals('aside', $post->format());
 		}
 
 		function testPostClass(){
@@ -439,6 +410,14 @@
 			$children = $this->factory->post->create_many(8, array('post_parent' => $parent_id));
 			$parent = new TimberPost($parent_id);
 			$this->assertEquals(8, count($parent->children()));
+		}
+
+		function testPostChildrenOfParentType(){
+			$parent_id = $this->factory->post->create(array('post_type' => 'foo'));
+			$children = $this->factory->post->create_many(8, array('post_parent' => $parent_id));
+			$children = $this->factory->post->create_many(4, array('post_parent' => $parent_id, 'post_type' => 'foo'));
+			$parent = new TimberPost($parent_id);
+			$this->assertEquals(4, count($parent->children('parent')));
 		}
 
 		function testPostNoConstructorArgument(){
@@ -473,42 +452,88 @@
 			$this->assertEquals('News', $post->category()->name);
 		}
 
-		function testPostCategories(){
-			$cats = array('News', 'Sports', 'Obits');
-			foreach($cats as &$cat){
-				$cat = wp_insert_term($cat, 'category');
-			}
+		function testPostCategories() {
 			$pid = $this->factory->post->create();
-			foreach($cats as $cat){
-				wp_set_object_terms($pid, $cat['term_id'], 'category', true);
-			}
 			$post = new TimberPost($pid);
-			$this->assertEquals(3, count($post->categories()));
+			$category_names = array('News', 'Sports', 'Obits');
+
+			// Uncategorized is applied by default
+			$default_categories = $post->categories();
+			$this->assertEquals('uncategorized', $default_categories[0]->slug);
+
+			foreach ( $category_names as $category_name ) {
+				$category_name = wp_insert_term($category_name, 'category');
+				wp_set_object_terms($pid, $category_name['term_id'], 'category', true);
+			}
+
+			$this->assertEquals(count($default_categories) + count($category_names), count($post->categories()));
 		}
 
-		function testPostTerms(){
-			register_taxonomy('team', 'post');
-			$teams = array('Patriots', 'Bills', 'Dolphins', 'Jets');
-			foreach($teams as &$team){
-				$team_terms[] = wp_insert_term($team, 'team');
-			}
+		function testPostTags() {
 			$pid = $this->factory->post->create();
-			foreach($team_terms as $team){
-				wp_set_object_terms($pid, $team['term_id'], 'team', true);
+			$post = new TimberPost($pid);
+			$tag_names = array('News', 'Sports', 'Obits');
+
+			foreach ( $tag_names as $tag_name ) {
+				$tag = wp_insert_term($tag_name, 'post_tag');
+				wp_set_object_terms($pid, $tag['term_id'], 'post_tag', true);
 			}
+
+			$this->assertEquals(count($tag_names), count($post->tags()));
+		}
+
+		function testPostTerms() {
+			$pid = $this->factory->post->create();
 			$post = new TimberPost($pid);
-			$teams = $post->terms('team');
-			$this->assertEquals(4, count($teams));
-			$tag = wp_insert_term('whatever', 'post_tag');
-			wp_set_object_terms($pid, $tag['term_id'], 'post_tag', true);
-			$post = new TimberPost($pid);
-			$this->assertEquals(6, count($post->terms()));
-			$tags = $post->tags();
-			$this->assertEquals('whatever', $tags[0]->slug);
-			$tags = $post->terms('tag');
-			$this->assertEquals('whatever', $tags[0]->slug);
+
+			// create a new tag and associate it with the post
+			$dummy_tag = wp_insert_term('whatever', 'post_tag');
+			wp_set_object_terms($pid, $dummy_tag['term_id'], 'post_tag', true);
+
+			// test expected tags
+			$timber_tags = $post->terms('post_tag');
+			$dummy_timber_tag = new TimberTerm($dummy_tag['term_id'], 'post_tag');
+			$this->assertEquals('whatever', $timber_tags[0]->slug);
+			$this->assertEquals($dummy_timber_tag, $timber_tags[0]);
+
+			// register a custom taxonomy, create some terms in it and associate to post
+			register_taxonomy('team', 'post');
+			$team_names = array('Patriots', 'Bills', 'Dolphins', 'Jets');
+
+			foreach ( $team_names as $team_name ) {
+				$team_term = wp_insert_term($team_name, 'team');
+				wp_set_object_terms($pid, $team_term['term_id'], 'team', true);
+			}
+
+			$this->assertEquals(count($team_names), count($post->terms('team')));
+
+			// check presence of specific terms
+			$this->assertTrue($post->has_term('Uncategorized'));
+			$this->assertTrue($post->has_term('whatever'));
 			$this->assertTrue($post->has_term('Dolphins'));
 			$this->assertTrue($post->has_term('Patriots', 'team'));
+
+			// 4 teams + 1 tag + default category (Uncategorized)
+			$this->assertEquals(6, count($post->terms()));
+
+			// test tags method - wrapper for $this->get_terms('tags')
+			$this->assertEquals($post->tags(), $post->terms('tag'));
+			$this->assertEquals($post->tags(), $post->terms('tags'));
+			$this->assertEquals($post->tags(), $post->terms('post_tag'));
+
+			// test categories method - wrapper for $this->get_terms('category')
+			$this->assertEquals($post->categories(), $post->terms('category'));
+			$this->assertEquals($post->categories(), $post->terms('categories'));
+
+			// test using an array of taxonomies
+			$post_tag_terms = $post->terms(array('post_tag'));
+			$this->assertEquals(1, count($post_tag_terms));
+			$post_team_terms = $post->terms(array('team'));
+			$this->assertEquals(count($team_names), count($post_team_terms));
+
+			// test multiple taxonomies
+			$post_tag_and_team_terms = $post->terms(array('post_tag','team'));
+			$this->assertEquals(count($post_tag_terms) + count($post_team_terms), count($post_tag_and_team_terms));
 		}
 
 		function testPostContentLength() {

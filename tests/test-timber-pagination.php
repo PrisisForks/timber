@@ -1,6 +1,6 @@
 <?php
 
-class TimberPaginationTest extends WP_UnitTestCase {
+class TestTimberPagination extends Timber_UnitTestCase {
 
 	function testPaginationSearch() {
 		update_option( 'permalink_structure', '' );
@@ -20,7 +20,7 @@ class TimberPaginationTest extends WP_UnitTestCase {
 		$this->go_to( home_url( '/' ) );
 		Timber::query_posts('post_type=portfolio');
 		$pagination = Timber::get_pagination();
-		
+
 		global $timber;
 		$timber->active_query = false;
 		unset($timber->active_query);
@@ -35,11 +35,23 @@ class TimberPaginationTest extends WP_UnitTestCase {
 		$this->go_to( home_url( '/' ) );
 		Timber::get_posts('post_type=portfolio');
 		$pagination = Timber::get_pagination();
-		
+
 		global $timber;
 		$timber->active_query = false;
 		unset($timber->active_query);
 		$this->assertEquals(4, count($pagination['pages']));
+	}
+
+	function testPaginationOnLaterPage() {
+		$struc = '/%postname%/';
+		global $wp_rewrite;
+		$wp_rewrite->permalink_structure = $struc;
+		register_post_type( 'portfolio' );
+		$pids = $this->factory->post->create_many( 55, array( 'post_type' => 'portfolio' ) );
+		$this->go_to( home_url( '/portfolio/page/3' ) );
+		query_posts('post_type=portfolio&paged=3');
+		$pagination = Timber::get_pagination();
+		$this->assertEquals(6, count($pagination['pages']));
 	}
 
 	function testPaginationSearchPrettyWithPostname() {

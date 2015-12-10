@@ -1,6 +1,6 @@
 <?php
 
-class TimberSiteTest extends WP_UnitTestCase {
+class TestTimberSite extends Timber_UnitTestCase {
 
 	function testStandardThemeLocation() {
 		switch_theme( 'twentythirteen' );

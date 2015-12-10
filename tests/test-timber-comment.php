@@ -1,6 +1,6 @@
 <?php
 
-class TimberCommentTest extends WP_UnitTestCase {
+class TestTimberComment extends Timber_UnitTestCase {
 
 	function testComment(){
 		$post_id = $this->factory->post->create();
@@ -8,6 +8,51 @@ class TimberCommentTest extends WP_UnitTestCase {
 		$comment = new TimberComment($comment_id);
 		$this->assertEquals('TimberComment', get_class($comment));
 		$this->assertEquals($comment_id, $comment->ID);
+	}
+
+	function testCommentContent(){
+		$costanza_quote = "Divorce is always hard. Especially on the kids. ‘Course I am the result of my parents having stayed together so ya never know.";
+		$post_id = $this->factory->post->create();
+		$comment_id = $this->factory->comment->create(array('comment_post_ID' => $post_id, 'comment_content' => $costanza_quote));
+		$comment = new TimberComment($comment_id);
+		$this->assertEquals($costanza_quote, $comment->content());
+	}
+
+	function testCommentApproval(){
+		$kramer_quote = "Oh, you gotta eat before surgery. You need your strength.";
+		$post_id = $this->factory->post->create();
+		$comment_id = $this->factory->comment->create(array('comment_post_ID' => $post_id, 'comment_content' => $kramer_quote));
+		$comment = new TimberComment($comment_id);
+		$comment->assertTrue($comment->approved());
+
+		$comment_id = $this->factory->comment->create(array('comment_post_ID' => $post_id, 'comment_content' => 'You ever dream in 3-D? It’s like the Boogie Man is coming RIGHT AT YOU.', 'comment_approved' => false));
+		$comment = new TimberComment($comment_id);
+		$comment->assertFalse($comment->approved());
+	}
+
+	function testCommentDate(){
+		$quote = "So he just shaves his head for no reason? That’s like using a wheelchair for the fun of it!";
+		$post_id = $this->factory->post->create();
+		$comment_id = $this->factory->comment->create(array('comment_post_ID' => $post_id, 'comment_content' => $quote, 'comment_date' => '2015-08-21 03:24:07'));
+		$comment = new TimberComment($comment_id);
+		$comment->assertEquals('August 21, 2015', $comment->date());
+	}
+
+	function testCommentTime(){
+		$quote = "My grandmother used to swear by this, but personally I was always skeptical.";
+		$post_id = $this->factory->post->create();
+		$comment_id = $this->factory->comment->create(array('comment_post_ID' => $post_id, 'comment_content' => $quote, 'comment_date' => '2015-08-21 03:24:07'));
+		$comment = new TimberComment($comment_id);
+		$comment->assertEquals('3:24 am', $comment->time());
+	}
+
+	function testCommentReplyLink() {
+		$comment_text = "Try the soup";
+		$post_id = $this->factory->post->create();
+		$comment_id = $this->factory->comment->create(array('comment_post_ID' => $post_id, 'comment_content' => $comment_text, 'comment_date' => '2015-08-21 03:24:07'));
+		$comment = new TimberComment($comment_id);
+		$link = $comment->reply_link('Respond');
+		$this->assertEquals('Respond', strip_tags($link));
 	}
 
 	function testAnonymousComment() {
@@ -35,9 +80,24 @@ class TimberCommentTest extends WP_UnitTestCase {
 		$this->assertEquals('Cosmo Kramer', $result);
 	}
 
+	function testGravatar() {
+		if (!TestTimberImage::is_connected()){
+			$this->markTestSkipped('Cannot test avatar images when not connected to internet');
+		}
+		$post_id = $this->factory->post->create();
+		$comment_id = $this->factory->comment->create(array('comment_post_ID' => $post_id, 'comment_author' => 'jarednova', 'comment_author_email' => 'jarednova@upstatement.com'));
+		$comment = new TimberComment($comment_id);
+		$gravatar = md5(file_get_contents($comment->avatar()));
+		$this->assertEquals($gravatar, md5(file_get_contents(dirname(__FILE__).'/assets/jarednova.jpeg')));
+
+		$comment_id = $this->factory->comment->create(array('comment_post_ID' => $post_id, 'comment_author' => 'jarednova', 'comment_author_email' => 'notjared@upstatement.com'));
+		$comment = new TimberComment($comment_id);
+		$not_gravatar = md5(file_get_contents($comment->avatar()));
+		$this->assertNotEquals($not_gravatar, md5(file_get_contents(dirname(__FILE__).'/assets/jarednova.jpeg')));
+	}
 
 	function testAvatar(){
-		if (!TimberImageTest::is_connected()){
+		if (!TestTimberImage::is_connected()){
 			$this->markTestSkipped('Cannot test avatar images when not connected to internet');
 		}
 		$post_id = $this->factory->post->create();
